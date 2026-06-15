@@ -1,4 +1,4 @@
-`python
+```python
 import streamlit as st
 import requests
 import pandas as pd
@@ -55,7 +55,7 @@ def fetch_news(country, category, keyword, page_size):
         "pageSize": page_size
     }
 
-    if keyword.strip():
+    if keyword:
         params["q"] = keyword
 
     response = requests.get(BASE_URL, params=params)
@@ -65,28 +65,25 @@ def fetch_news(country, category, keyword, page_size):
 
 
 # -----------------------------
-# Header
+# App Header
 # -----------------------------
 st.title("📰 Advanced News Explorer")
-st.markdown(
-    """
-    Stay informed with the latest headlines from around the world.
 
-    Use the filters in the sidebar to customize the news you want to see.
-    """
+st.write(
+    "Stay informed with the latest headlines from around the world."
 )
 
 # -----------------------------
 # Sidebar Filters
 # -----------------------------
-st.sidebar.header("🔍 News Filters")
+st.sidebar.header("News Filters")
 
-country = st.sidebar.selectbox(
+selected_country = st.sidebar.selectbox(
     "Select Country",
     list(countries.keys())
 )
 
-category = st.sidebar.selectbox(
+selected_category = st.sidebar.selectbox(
     "Select Category",
     categories
 )
@@ -96,30 +93,28 @@ keyword = st.sidebar.text_input(
     placeholder="e.g. AI, Tesla, Cricket"
 )
 
-page_size = st.sidebar.slider(
+article_count = st.sidebar.slider(
     "Number of Articles",
     min_value=5,
     max_value=50,
-    value=10,
-    step=5
+    value=10
 )
 
-search = st.sidebar.button("Fetch News")
-
+fetch_button = st.sidebar.button("Fetch News")
 
 # -----------------------------
 # Main Logic
 # -----------------------------
-if search:
+if fetch_button:
 
     with st.spinner("Fetching latest news..."):
 
         try:
             data = fetch_news(
-                countries[country],
-                category,
+                countries[selected_country],
+                selected_category,
                 keyword,
-                page_size
+                article_count
             )
 
             articles = data.get("articles", [])
@@ -136,60 +131,49 @@ if search:
             st.error(f"An unexpected error occurred: {e}")
             st.stop()
 
-    # -----------------------------
-    # No Results
-    # -----------------------------
-    if not articles:
-        st.warning("No articles found matching your criteria.")
+    if len(articles) == 0:
+        st.warning("No articles found.")
 
     else:
-
         st.success(f"Found {len(articles)} articles.")
 
-        # -----------------------------
         # Dashboard Statistics
-        # -----------------------------
         sources = {}
 
         for article in articles:
-            source = article.get("source", {}).get(
-                "name",
-                "Unknown"
-            )
-
+            source = article.get("source", {}).get("name", "Unknown")
             sources[source] = sources.get(source, 0) + 1
 
         col1, col2, col3 = st.columns(3)
 
-        col1.metric("Articles", len(articles))
-        col2.metric("Sources", len(sources))
-        col3.metric("Category", category.title())
+        with col1:
+            st.metric("Articles", len(articles))
+
+        with col2:
+            st.metric("Sources", len(sources))
+
+        with col3:
+            st.metric("Category", selected_category.title())
 
         st.divider()
 
-        # -----------------------------
-        # Source Breakdown
-        # -----------------------------
+        # Source Breakdown Table
         with st.expander("📊 Source Breakdown"):
 
-            df = pd.DataFrame(
-                {
-                    "Source": list(sources.keys()),
-                    "Articles": list(sources.values())
-                }
-            )
+            df = pd.DataFrame({
+                "Source": list(sources.keys()),
+                "Articles": list(sources.values())
+            })
 
             st.dataframe(
                 df.sort_values(
-                    "Articles",
+                    by="Articles",
                     ascending=False
                 ),
                 use_container_width=True
             )
 
-        # -----------------------------
         # Display Articles
-        # -----------------------------
         for index, article in enumerate(articles, start=1):
 
             st.divider()
@@ -197,7 +181,6 @@ if search:
             col1, col2 = st.columns([1, 3])
 
             with col1:
-
                 image_url = article.get("urlToImage")
 
                 if image_url:
@@ -207,7 +190,6 @@ if search:
                     )
 
             with col2:
-
                 st.subheader(
                     f"{index}. {article.get('title', 'No Title')}"
                 )
@@ -227,10 +209,8 @@ if search:
                         published = datetime.strptime(
                             published,
                             "%Y-%m-%dT%H:%M:%SZ"
-                        ).strftime(
-                            "%d %b %Y • %I:%M %p"
-                        )
-                    except:
+                        ).strftime("%d %b %Y • %I:%M %p")
+                    except ValueError:
                         pass
 
                 st.caption(
@@ -249,17 +229,16 @@ if search:
                 if author:
                     st.write(f"**Author:** {author}")
 
-                url = article.get("url")
+                article_url = article.get("url")
 
-                if url:
+                if article_url:
                     st.link_button(
                         "Read Full Article",
-                        url
+                        article_url
                     )
 
 else:
     st.info(
-        "Select your filters from the sidebar and click "
-        "'Fetch News' to get started."
+        "Choose your filters from the sidebar and click "
+        "'Fetch News' to view the latest headlines."
     )
-```
